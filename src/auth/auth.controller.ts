@@ -1,76 +1,23 @@
-import {
-  BadRequestException,
-  Body,
-  ClassSerializerInterceptor,
-  Controller,
-  Get,
-  Post,
-  Req,
-  Res,
-  UseInterceptors,
-} from '@nestjs/common';
-import { Request, Response } from 'express';
-import * as bcrypt from 'bcrypt';
+import { Controller, Request, Post, UseGuards, Get } from '@nestjs/common';
+import { LocalAuthGuard } from './passport/local-auth.guard';
 import { AuthService } from './auth.service';
-import { RegisterDto } from './dto/register.dto';
-import { LoginDto } from './dto/login.dto';
-import { JwtService } from '@nestjs/jwt';
-import { AuthInterceptor } from './auth.interceptor';
+import { JwtAuthGuard } from './passport/jwt-auth.guard';
+import { Public } from './utils/auth.decorator';
 
-@UseInterceptors(ClassSerializerInterceptor)
 @Controller('auth')
 export class AuthController {
-  constructor(
-    private authService: AuthService,
-    private jwtService: JwtService
-  ) {}
+  constructor(private authService: AuthService) {}
 
-  @Post('/register')
-  async register(@Body() body: RegisterDto) {
-    const hashed = await bcrypt.hash(body.password, 12);
-
-    return this.authService.create({
-      firstName: body.first_name,
-      lastName: body.last_name,
-      email: body.email,
-      password: hashed
-    });
+  @Public()
+  @UseGuards(LocalAuthGuard)
+  @Post('login')
+  async login(@Request() req) {
+    return this.authService.login(req.user);
   }
 
-  @Post('/login')
-  async login(@Body() body: LoginDto, @Res({passthrough: true}) response: Response) {
-    const user = await this.authService.findOneBy({email: body.email});
-
-    if (!user) {
-      throw new BadRequestException('Email does not exists!');
-    }
-
-    if (!await bcrypt.compare(body.password, user.password)) {
-      throw new BadRequestException('Invalid credentials!');
-    }
-
-    const jwt = await this.jwtService.signAsync({id: user.id});
-    response.cookie('jwt', jwt, { httpOnly: true });
-
-    return user;
-  }
-
-  @UseInterceptors(AuthInterceptor)
-  @Get('user')
-  async user(@Req() request: Request) {
-    const cookie = request.cookies['jwt'];
-    const data = await this.jwtService.verifyAsync(cookie);
-
-    return await this.authService.findOneBy({ id: data.id });
-  }
-
-  @UseInterceptors(AuthInterceptor)
-  @Post('logout')
-  async logout(@Res({passthrough: true}) response: Response) {
-    response.clearCookie('jwt');
-
-    return {
-      message: 'Success'
-    }
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  getProfile(@Request() req) {
+    return req.user;
   }
 }
