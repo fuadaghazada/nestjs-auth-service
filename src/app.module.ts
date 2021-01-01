@@ -9,7 +9,7 @@ import { MongooseModule } from '@nestjs/mongoose';
   imports: [
     AuthModule,
     UserModule,
-    MongooseModule.forRoot('mongodb://localhost/carfax')
+    MongooseModule.forRoot('mongodb://carfax-db/carfax')
   ],
   controllers: [AppController],
   providers: [AppService],
