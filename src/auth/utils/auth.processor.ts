@@ -6,11 +6,12 @@ import { Job } from 'bull';
 export class EmailProcessor {
   private readonly logger = new Logger(EmailProcessor.name);
 
-  @Process('send_email')
-  async sendEmail(job: Job) {
+  @Process('send_verification_email')
+  async sendVerificationCode(job: Job) {
     setTimeout(() => {
         this.logger.debug('Email sending...');
-        this.logger.debug(job.data);
+        this.logger.debug(`To: ${job.data.email}`);
+        this.logger.debug(`Content: ${job.data.code}`);
         this.logger.debug('Email sent!');
     }, 3000);
   }

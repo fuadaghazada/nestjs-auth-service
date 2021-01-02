@@ -14,11 +14,12 @@ import { BullModule } from '@nestjs/bull';
     BullModule.forRoot({
       redis: {
         host: 'carfax-redis',
-        port: 6379
-      }
+        port: 6379,
+      },
     })
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule {
+}
