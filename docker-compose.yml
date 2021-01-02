@@ -1,5 +1,8 @@
 version: "3.7"
 
+networks:
+  api_redis:
+
 services:
   api:
     container_name: carfax-api
@@ -13,9 +16,22 @@ services:
     command: npm run start:dev
     depends_on:
       - db
+      - redis
+    networks:
+      - api_redis
+      - default
 
   db:
     image: mongo:4.0.4
     container_name: carfax-db
     ports:
       - 27017:27017
+
+  redis:
+    image: redis
+    container_name: carfax-redis
+    expose:
+      - 6379
+    networks:
+      - api_redis
+

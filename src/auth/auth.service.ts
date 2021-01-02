@@ -3,12 +3,15 @@ import { UserService } from '../user/user.service';
 import { JwtService } from '@nestjs/jwt';
 import { CreateUserDto } from '../user/interface/user.dto.create';
 import * as bcrypt from 'bcrypt';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
 
 @Injectable()
 export class AuthService {
   constructor(
     private userService: UserService,
-    private jwtService: JwtService
+    private jwtService: JwtService,
+    @InjectQueue('email') private readonly emailQueue: Queue
   ) {}
 
   async validate(email: string, pass: string): Promise<any> {
@@ -39,6 +42,9 @@ export class AuthService {
     const saltOrRounds = 10;
     user.password = await bcrypt.hash(user.password, saltOrRounds);
 
-    return this.userService.createUser(user);
+    const createdUser = await this.userService.createUser(user);
+    await this.emailQueue.add('send_email', { email: createdUser.email });
+
+    return createdUser;
   }
 }

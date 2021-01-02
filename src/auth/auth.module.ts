@@ -9,6 +9,8 @@ import { LocalStrategy } from './passport/local.strategy';
 import { JwtStrategy } from './passport/jwt.strategy';
 import { jwtConstants } from './auth.constant';
 import { JwtAuthGuard } from './passport/jwt-auth.guard';
+import { BullModule } from '@nestjs/bull';
+import { EmailProcessor } from './utils/auth.processor';
 
 @Module({
   imports: [
@@ -18,6 +20,9 @@ import { JwtAuthGuard } from './passport/jwt-auth.guard';
       secret: jwtConstants.secret,
       signOptions: { expiresIn: '1h' },
     }),
+    BullModule.registerQueue({
+      name: 'email'
+    })
   ],
   providers: [
     AuthService,
@@ -27,6 +32,7 @@ import { JwtAuthGuard } from './passport/jwt-auth.guard';
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
     },
+    EmailProcessor
   ],
   controllers: [AuthController],
   exports: [AuthService]

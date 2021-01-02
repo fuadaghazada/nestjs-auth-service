@@ -25,7 +25,7 @@ export class AuthController {
   }
 
   @Get('me')
-  getProfile(@Req() req) {
+  async getProfile(@Req() req) {
     return req.user;
   }
 
