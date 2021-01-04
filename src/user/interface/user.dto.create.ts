@@ -1,4 +1,5 @@
 import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
+import { MIN_PASSWORD_LENGTH } from '../../auth/auth.constant';
 
 export class CreateUserDto {
   @IsNotEmpty()
@@ -14,6 +15,6 @@ export class CreateUserDto {
   email: string;
 
   @IsNotEmpty()
-  @MinLength(6)
+  @MinLength(MIN_PASSWORD_LENGTH)
   password: string;
 }

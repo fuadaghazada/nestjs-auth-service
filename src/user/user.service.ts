@@ -21,4 +21,13 @@ export class UserService {
   async findById(id: string): Promise<User | undefined> {
     return this.userModel.findById(id).exec();
   }
+
+  async updatePassword(id: string, password: string): Promise<User | undefined> {
+    const user = await this.userModel.findById(id);
+    if (user) {
+      user.password = password;
+      await user.save();
+    }
+    return user;
+  }
 }

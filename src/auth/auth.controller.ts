@@ -1,13 +1,20 @@
-import { Controller, Req, Res, Post, UseGuards, Get, Body, Param, BadRequestException } from '@nestjs/common';
+import { Controller, Req, Res, Post, UseGuards, Get, Body, Param, Put } from '@nestjs/common';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { AuthService } from './auth.service';
-import { Public } from './utils/auth.decorator';
+import { Public } from '../util/util.decorator';
 import { CreateUserDto } from '../user/interface/user.dto.create';
-import { VerifyCode } from './interface/auth.dto.verify';
+import { VerifyCodeDto } from './interface/auth.dto.verify';
+import { SendEmailDto } from './interface/auth.dto.send-email';
+import { ResetPasswordDto } from './interface/auth.dto.reset-password';
 
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {
+  }
+
+  @Get('me')
+  async getProfile(@Req() req) {
+    return req.user;
   }
 
   @Public()
@@ -26,15 +33,27 @@ export class AuthController {
     return data;
   }
 
-  @Get('me')
-  async getProfile(@Req() req) {
-    return req.user;
+  @Public()
+  @Post('send_verification')
+  async sendVerification(@Body() body: SendEmailDto) {
+    return this.authService.sendVerification(body.email);
   }
 
   @Public()
   @Post('verify/:id')
-  async verify(@Param('id') id: string, @Body() body: VerifyCode) {
-    return this.authService.verify(id, body.verification_code);
+  async verify(@Param('id') id: string,
+               @Body() body: VerifyCodeDto,
+               @Res({ passthrough: true }) res) {
+    const user = await this.authService.verify(id, body.verification_code);
+    const { jwt, data } = await this.authService.login(user);
+    res.cookie('jwt', jwt, {httpOnly: true});
+
+    return data;
+  }
+
+  @Put('reset_password')
+  async resetPassword(@Req() req, @Body() body: ResetPasswordDto) {
+    return this.authService.resetPassword(req.user.id, body.new_password);
   }
 
   @Post('logout')

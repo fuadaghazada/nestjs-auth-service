@@ -1,6 +1,6 @@
 import { IsNotEmpty, IsString } from 'class-validator';
 
-export class VerifyCode {
+export class VerifyCodeDto {
   @IsNotEmpty()
   @IsString()
   verification_code: string;

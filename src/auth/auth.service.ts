@@ -1,17 +1,18 @@
 import { CACHE_MANAGER, Inject, Injectable } from '@nestjs/common';
-import { UserService } from '../user/user.service';
 import { JwtService } from '@nestjs/jwt';
-import { CreateUserDto } from '../user/interface/user.dto.create';
-import * as bcrypt from 'bcrypt';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { Cache } from 'cache-manager';
+import { UserService } from '../user/user.service';
+import { UtilService } from '../util/util.service';
+import { CreateUserDto } from '../user/interface/user.dto.create';
 
 @Injectable()
 export class AuthService {
   constructor(
     private userService: UserService,
     private jwtService: JwtService,
+    private utilService: UtilService,
     @InjectQueue('email') private readonly emailQueue: Queue,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {
@@ -19,9 +20,7 @@ export class AuthService {
 
   async validate(email: string, pass: string): Promise<any> {
     const user = await this.userService.findByEmail(email);
-    const passwordMatch = user && await bcrypt.compare(pass, user.password);
-
-    if (passwordMatch) {
+    if (user && await this.utilService.checkPassword(pass, user.password)) {
       return user;
     }
 
@@ -30,6 +29,7 @@ export class AuthService {
 
   async login(user: any) {
     const payload = {
+      id: user.id,
       email: user.email,
       first_name: user.first_name,
       last_name: user.last_name,
@@ -42,11 +42,10 @@ export class AuthService {
   }
 
   async register(user: CreateUserDto) {
-    const saltOrRounds = 10;
-    user.password = await bcrypt.hash(user.password, saltOrRounds);
+    user.password = await this.utilService.hashPassword(user.password);
 
     const createdUser = await this.userService.createUser(user);
-    await this.sendVerification(createdUser.email);
+    await this.sendVerificationEmail(createdUser.email);
 
     return createdUser;
   }
@@ -63,8 +62,31 @@ export class AuthService {
     return user;
   }
 
-  private async sendVerification(email: string) {
-    const verificationCode = 'CODE'; // TODO: temp
+  async sendVerification(email: string) {
+    const user = await this.userService.findByEmail(email);
+
+    if (!user) {
+      throw new Error('No user found with the email');
+    }
+
+    await this.sendVerificationEmail(user.email);
+
+    return user;
+  }
+
+  async resetPassword(id: string, newPassword: string) {
+    const hashedNewPassword = await this.utilService.hashPassword(newPassword);
+    const user = await this.userService.updatePassword(id, hashedNewPassword);
+
+    if (!user) {
+      throw new Error('No user found');
+    }
+
+    return user;
+  }
+
+  private async sendVerificationEmail(email: string) {
+    const verificationCode = this.utilService.generateRandomCode();
 
     await this.cacheManager.set(email, verificationCode, { ttl: 100 });
     await this.emailQueue.add('send_verification_email', {
